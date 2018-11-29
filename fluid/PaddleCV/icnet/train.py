@@ -23,11 +23,12 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 # yapf: disable
 add_arg('batch_size',        int,   16,         "Minibatch size.")
-add_arg('checkpoint_path',   str,   None,       "Checkpoint svae path.")
+add_arg('checkpoint_path',   str,   None,       "Checkpoint save path.")
 add_arg('init_model',        str,   None,       "Pretrain model path.")
 add_arg('use_gpu',           bool,  True,       "Whether use GPU to train.")
 add_arg('random_mirror',     bool,  True,       "Whether prepare by random mirror.")
 add_arg('random_scaling',    bool,  True,       "Whether prepare by random scaling.")
+add_arg('data_path',    str,  None,       "Training data path.")
 # yapf: enable
 
 LAMBDA1 = 0.16
@@ -104,8 +105,8 @@ def train(args):
     sub4_loss = 0.
     sub24_loss = 0.
     sub124_loss = 0.
-    train_reader = cityscape.train(
-        args.batch_size, flip=args.random_mirror, scaling=args.random_scaling)
+    train_reader = cityscape.train(data_path=args.data_path,
+                                   batch_size=args.batch_size, flip=args.random_mirror, scaling=args.random_scaling)
     start_time = time.time()
     while True:
         # train a pass
@@ -137,7 +138,7 @@ def train(args):
                 sys.stdout.flush()
 
             if iter_id % CHECKPOINT_PERIOD == 0 and args.checkpoint_path is not None:
-                dir_name = args.checkpoint_path + "/" + str(iter_id)
+                dir_name = args.checkpoint_path + os.sep + str(iter_id)
                 fluid.io.save_persistables(exe, dirname=dir_name)
                 print("Saved checkpoint: %s" % (dir_name))
 

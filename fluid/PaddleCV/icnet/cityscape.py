@@ -8,9 +8,9 @@ import cv2
 import numpy as np
 import paddle.dataset as dataset
 
-DATA_PATH = "./data/cityscape"
-TRAIN_LIST = DATA_PATH + "/train.list"
-TEST_LIST = DATA_PATH + "/val.list"
+DATA_PATH = "." + os.sep + "data" + os.sep + "cityscape"
+TRAIN_LIST = DATA_PATH + os.sep + "train.list"
+TEST_LIST = DATA_PATH + os.sep + "val.list"
 IGNORE_LABEL = 255
 NUM_CLASSES = 19
 TRAIN_DATA_SHAPE = (3, 720, 720)
@@ -35,9 +35,14 @@ class DataGenerater:
         self.flip = flip
         self.scaling = scaling
         self.image_label = []
+        self.data_path = os.path.dirname(data_list)
         with open(data_list, 'r') as f:
             for line in f:
                 image_file, label_file = line.strip().split(' ')
+                image_file = str.replace(image_file, '/', os.sep)
+                image_file = self.data_path + os.sep + image_file
+                label_file = str.replace(label_file, '/', os.sep)
+                label_file = self.data_path + os.sep + label_file
                 self.image_label.append((image_file, label_file))
 
     def create_train_reader(self, batch_size):
@@ -116,10 +121,10 @@ class DataGenerater:
         Load image from file.
         """
         image = dataset.image.load_image(
-            DATA_PATH + "/" + image, is_color=True).astype("float32")
+            image, is_color=True).astype("float32")
         image -= IMG_MEAN
         label = dataset.image.load_image(
-            DATA_PATH + "/" + label, is_color=False).astype("float32")
+            label, is_color=False).astype("float32")
         return image, label
 
     def random_flip(self, image, label):
@@ -195,13 +200,13 @@ class DataGenerater:
             "float32"), label0, mask_sub1, label1, mask_sub2, label2, mask_sub4
 
 
-def train(batch_size=32, flip=True, scaling=True):
+def train(data_path=None, batch_size=32, flip=True, scaling=True):
     """
     Cityscape training set reader.
     It returns a reader, in which each result is a batch with batch_size samples.
 
-    :param batch_size: The batch size of each result return by the reader.
-    :type batch_size: int
+    :param data_path: The training data path
+    :type data_path: str
     :param flip: Whether flip images randomly.
     :type batch_size: bool
     :param scaling: Whether scale images randomly.
@@ -209,12 +214,13 @@ def train(batch_size=32, flip=True, scaling=True):
     :return: Training reader.
     :rtype: callable
     """
+    data_path = TRAIN_LIST if data_path is None else data_path + os.sep + "train.list"
     reader = DataGenerater(
-        TRAIN_LIST, flip=flip, scaling=scaling).create_train_reader(batch_size)
+        data_path, flip=flip, scaling=scaling).create_train_reader(batch_size)
     return reader
 
 
-def test():
+def test(data_path=None):
     """
     Cityscape validation set reader.
     It returns a reader, in which each result is a sample.
@@ -222,7 +228,8 @@ def test():
     :return: Training reader.
     :rtype: callable
     """
-    reader = DataGenerater(TEST_LIST).create_test_reader()
+    data_path = TEST_LIST if data_path is None else data_path + os.sep + "val.list"
+    reader = DataGenerater(data_path).create_test_reader()
     return reader
 
 

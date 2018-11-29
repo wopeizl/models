@@ -16,6 +16,7 @@ add_arg = functools.partial(add_arguments, argparser=parser)
 # yapf: disable
 add_arg('model_path',        str,   None,         "Model path.")
 add_arg('use_gpu',           bool,  True,       "Whether use GPU to test.")
+add_arg('data_path',    str,  None,       "Training data path.")
 # yapf: enable
 
 
@@ -71,7 +72,7 @@ def eval(args):
     out_wrong = np.zeros([num_classes]).astype("int64")
     out_right = np.zeros([num_classes]).astype("int64")
     count = 0
-    test_reader = cityscape.test()
+    test_reader = cityscape.test(data_path=args.data_path)
     for data in test_reader():
         count += 1
         result = exe.run(inference_program,

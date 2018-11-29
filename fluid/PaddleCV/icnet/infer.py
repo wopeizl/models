@@ -109,7 +109,7 @@ def infer(args):
         os.makedirs(args.out_path)
 
     for line in open(args.images_list):
-        image_file = args.images_path + "/" + line.strip()
+        image_file = args.images_path + os.sep + line.strip()
         filename = os.path.basename(image_file)
         image = paddle.dataset.image.load_image(
             image_file, is_color=True).astype("float32")
@@ -120,7 +120,7 @@ def infer(args):
         result = exe.run(inference_program,
                          feed={"image": image_t},
                          fetch_list=[predict])
-        cv2.imwrite(args.out_path + "/" + filename + "_result.png",
+        cv2.imwrite(args.out_path + os.sep + filename + "_result.png",
                     color(result[0]))
 
 
