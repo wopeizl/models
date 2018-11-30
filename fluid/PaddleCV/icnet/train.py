@@ -19,16 +19,18 @@ if 'ce_mode' in os.environ:
     np.random.seed(10)
     fluid.default_startup_program().random_seed = 90
 
+default_batch_size = 16 if os.name != 'nt' else 1
+default_checkpoint_path = None if os.name != 'nt' else '.'
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 # yapf: disable
-add_arg('batch_size',        int,   16,         "Minibatch size.")
-add_arg('checkpoint_path',   str,   None,       "Checkpoint save path.")
-add_arg('init_model',        str,   None,       "Pretrain model path.")
-add_arg('use_gpu',           bool,  True,       "Whether use GPU to train.")
-add_arg('random_mirror',     bool,  True,       "Whether prepare by random mirror.")
-add_arg('random_scaling',    bool,  True,       "Whether prepare by random scaling.")
-add_arg('data_path',    str,  None,       "Training data path.")
+add_arg('batch_size',        int,   default_batch_size,         "Minibatch size.")
+add_arg('checkpoint_path',   str,   default_checkpoint_path,    "Checkpoint save path.")
+add_arg('init_model',        str,   None,                       "Pretrain model path.")
+add_arg('use_gpu',           bool,  True,                       "Whether use GPU to train.")
+add_arg('random_mirror',     bool,  True,                       "Whether prepare by random mirror.")
+add_arg('random_scaling',    bool,  True,                       "Whether prepare by random scaling.")
+add_arg('data_path',         str,   None,                       "Training data path.")
 # yapf: enable
 
 LAMBDA1 = 0.16
