@@ -46,7 +46,6 @@ class DataGenerater:
                 image_file = self.data_path + os.sep + image_file
                 label_file = str.replace(label_file, '/', os.sep)
                 label_file = self.data_path + os.sep + label_file
-                # print (image_file, label_file)
                 self.image_label.append((image_file, label_file))
 
     def create_train_reader(self, batch_size):
@@ -94,7 +93,6 @@ class DataGenerater:
 
         def reader():
             for image, label in self.image_label:
-                # print "image: %s" % image
                 image, label = self.load(image, label)
                 image, label = self.resize(image, label, out_size=TRAIN_DATA_SHAPE[1:]) # for test
                 image = dataset.image.to_chw(image)[np.newaxis, :]
@@ -134,8 +132,6 @@ class DataGenerater:
         else:
             label = dataset.image.load_image(
                 label, is_color=False).astype("float32")
-        # print(image, label)
-        # print('------------------------------------------------------------')
         return image, label
 
     def random_flip(self, image, label):

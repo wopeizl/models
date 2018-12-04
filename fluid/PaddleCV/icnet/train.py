@@ -44,7 +44,6 @@ TOTAL_STEP = 100
 
 no_grad_set = []
 
-
 def create_iou(predict, label, mask, num_classes, image_shape):
     predict = fluid.layers.resize_bilinear(predict, out_shape=image_shape[1:3])
     predict = fluid.layers.transpose(predict, perm=[0, 2, 3, 1])
@@ -56,8 +55,6 @@ def create_iou(predict, label, mask, num_classes, image_shape):
     label = fluid.layers.gather(label, mask)
     label = fluid.layers.cast(label, dtype="int32")
     predict = fluid.layers.cast(predict, dtype="int32")
-#    fluid.layers.Print(predict, message="predict#")
-#    fluid.layers.Print(label, message="label")
     iou, out_w, out_r = fluid.layers.mean_iou(predict, label, num_classes)
     return iou, out_w, out_r
 

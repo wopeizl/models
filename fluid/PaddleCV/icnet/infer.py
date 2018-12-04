@@ -126,7 +126,6 @@ def infer(args):
         image_file = str.replace(image_file, '/', os.sep)
         image_file = image_file.split(' ')[0]
         filename = os.path.basename(image_file)
-        print(filename, image_file)
         image = paddle.dataset.image.load_image(
             image_file, is_color=True).astype("float32")
         image -= IMG_MEAN
