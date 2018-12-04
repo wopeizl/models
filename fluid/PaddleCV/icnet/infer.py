@@ -8,6 +8,7 @@ import os
 import cv2
 
 import paddle.fluid as fluid
+import paddle.dataset as dataset
 import paddle
 from icnet import icnet
 from utils import add_arguments, print_arguments, get_feeder_data
@@ -77,6 +78,14 @@ def color(input):
     result = np.array(result).reshape([input.shape[0], input.shape[1], 3])
     return result
 
+def resize(image, out_size):
+    """
+    Resize image by padding or cropping.
+    """
+    image = dataset.image.random_crop(
+        image, out_size[0], is_color=True)
+    image = image[:, :, 0:3]
+    return image
 
 def infer(args):
     data_shape = cityscape.test_data_shape()
@@ -121,6 +130,7 @@ def infer(args):
         image = paddle.dataset.image.load_image(
             image_file, is_color=True).astype("float32")
         image -= IMG_MEAN
+        image = resize(image, out_size=cityscape.TRAIN_DATA_SHAPE[1:])  # for test
         img = paddle.dataset.image.to_chw(image)[np.newaxis, :]
         image_t = fluid.core.LoDTensor()
         image_t.set(img, place)
