@@ -39,10 +39,27 @@ LAMBDA3 = 1.0
 LEARNING_RATE = 0.003
 POWER = 0.9
 LOG_PERIOD = 100
-CHECKPOINT_PERIOD = 100
+CHECKPOINT_PERIOD = 10
 TOTAL_STEP = 100
 
 no_grad_set = []
+
+
+def create_iou(predict, label, mask, num_classes, image_shape):
+    predict = fluid.layers.resize_bilinear(predict, out_shape=image_shape[1:3])
+    predict = fluid.layers.transpose(predict, perm=[0, 2, 3, 1])
+    predict = fluid.layers.reshape(predict, shape=[-1, num_classes])
+    label = fluid.layers.reshape(label, shape=[-1, 1])
+    _, predict = fluid.layers.topk(predict, k=1)
+    predict = fluid.layers.cast(predict, dtype="float32")
+    predict = fluid.layers.gather(predict, mask)
+    label = fluid.layers.gather(label, mask)
+    label = fluid.layers.cast(label, dtype="int32")
+    predict = fluid.layers.cast(predict, dtype="int32")
+#    fluid.layers.Print(predict, message="predict#")
+#    fluid.layers.Print(label, message="label")
+    iou, out_w, out_r = fluid.layers.mean_iou(predict, label, num_classes)
+    return iou, out_w, out_r
 
 
 def create_loss(predict, label, mask, num_classes):
@@ -82,6 +99,9 @@ def train(args):
     loss_sub4 = create_loss(sub4_out, label_sub4, mask_sub4, num_classes)
     loss_sub24 = create_loss(sub24_out, label_sub2, mask_sub2, num_classes)
     loss_sub124 = create_loss(sub124_out, label_sub1, mask_sub1, num_classes)
+    
+    iou, out_w, out_r = create_iou(sub124_out, label_sub1, mask_sub1, num_classes, data_shape)
+
     reduced_loss = LAMBDA1 * loss_sub4 + LAMBDA2 * loss_sub24 + LAMBDA3 * loss_sub124
 
     regularizer = fluid.regularizer.L2Decay(0.0001)
@@ -120,7 +140,7 @@ def train(args):
             iter_id += 1
             results = exe.run(
                 feed=get_feeder_data(data, place),
-                fetch_list=[reduced_loss, loss_sub4, loss_sub24, loss_sub124])
+                fetch_list=[reduced_loss, loss_sub4, loss_sub24, loss_sub124, out_w, out_r])
             t_loss += results[0]
             sub4_loss += results[1]
             sub24_loss += results[2]
@@ -132,6 +152,7 @@ def train(args):
                     % (iter_id, t_loss / LOG_PERIOD, sub4_loss / LOG_PERIOD,
                        sub24_loss / LOG_PERIOD, sub124_loss / LOG_PERIOD))
                 print("kpis	train_cost	%f" % (t_loss / LOG_PERIOD))
+                print ("IoU: [%s]" % (np.array(results[5]).astype("float32")/(results[4] + results[5])))
 
                 t_loss = 0.
                 sub4_loss = 0.

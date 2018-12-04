@@ -70,7 +70,7 @@ def atrous_conv(input,
         tmp = fluid.layers.pad(tmp, padding)
 
     tmp = fluid.layers.conv2d(
-        input,
+        tmp,
         num_filters=c_o,
         filter_size=[k_h, k_w],
         dilation=dilation,
@@ -94,6 +94,12 @@ def bn(input, relu=False, name=None, is_test=False):
     name = input.name.split(".")[0] + "_bn"
     tmp = fluid.layers.batch_norm(
         input, act=act, momentum=0.95, epsilon=1e-5, name=name)
+
+    # if relu:
+    #     tmp = fluid.layers.relu(x=input)
+    # else:
+    #     tmp = input
+
     return tmp
 
 
@@ -165,7 +171,7 @@ def shared_convs(image):
     tmp = bn(tmp, relu=True)
     tmp = conv(tmp, 3, 3, 64, 1, 1, padding='SAME', name="conv1_3_3_3")
     tmp = bn(tmp, relu=True)
-    tmp = max_pool(tmp, 3, 3, 2, 2, padding=[1, 1])
+    tmp = max_pool(tmp, 3, 3, 2, 2, padding=[1, 0]) # debug ---------------------------note
 
     tmp = proj_block(tmp, filter_num=128, padding=0, name="conv2_1")
     tmp = res_block(tmp, filter_num=128, padding=1, name="conv2_2")
@@ -247,10 +253,12 @@ def sub_net_4(input, input_shape):
 def sub_net_2(input):
     tmp = conv(input, 1, 1, 128, 1, 1, name="conv3_1_sub2_proj")
     tmp = bn(tmp, relu=False)
+    # fluid.layers.Print(tmp, message="xxxxx", summarize=10)
     return tmp
 
 
 def sub_net_1(input):
+    # fluid.layers.Print(input, message="input", summarize=10)
     tmp = conv(input, 3, 3, 32, 2, 2, padding='SAME', name="conv1_sub1")
     tmp = bn(tmp, relu=True)
     tmp = conv(tmp, 3, 3, 32, 2, 2, padding='SAME', name="conv2_sub1")
@@ -259,10 +267,12 @@ def sub_net_1(input):
     tmp = bn(tmp, relu=True)
     tmp = conv(tmp, 1, 1, 128, 1, 1, name="conv3_sub1_proj")
     tmp = bn(tmp, relu=False)
+    # fluid.layers.Print(tmp, message="sub_net_1", summarize=10)
     return tmp
 
 
 def CCF24(sub2_out, sub4_out, input_shape):
+    # fluid.layers.Print(sub2_out, message="sub2_out", summarize=10)
     tmp = zero_padding(sub4_out, padding=2)
     tmp = atrous_conv(tmp, 3, 3, 128, 2, name="conv_sub4")
     tmp = bn(tmp, relu=False)
@@ -273,9 +283,13 @@ def CCF24(sub2_out, sub4_out, input_shape):
 
 
 def CCF124(sub1_out, sub24_out, input_shape):
+    # fluid.layers.Print(sub24_out, message="sub24_out", summarize=10)
+
     tmp = zero_padding(sub24_out, padding=2)
     tmp = atrous_conv(tmp, 3, 3, 128, 2, name="conv_sub2")
     tmp = bn(tmp, relu=False)
+    # fluid.layers.Print(tmp, message="tmp", summarize=10)
+    # fluid.layers.Print(sub1_out, message="sub1_out", summarize=10)
     tmp = tmp + sub1_out
     tmp = fluid.layers.relu(tmp)
     tmp = interp(tmp, input_shape // 4)
@@ -287,18 +301,27 @@ def icnet(data, num_classes, input_shape):
     image_sub2 = interp(data, out_shape=input_shape * 0.5)
 
     s_convs = shared_convs(image_sub2)
+    # fluid.layers.Print(s_convs, message="s_convs", summarize=10)
     sub4_out = sub_net_4(s_convs, input_shape)
+    # fluid.layers.Print(sub4_out, message="sub4_out", summarize=10)
     sub2_out = sub_net_2(s_convs)
+    # fluid.layers.Print(sub2_out, message="sub2_out", summarize=10)
     sub1_out = sub_net_1(image_sub1)
+    # fluid.layers.Print(image_sub1, message="image_sub1", summarize=10)
 
     sub24_out = CCF24(sub2_out, sub4_out, input_shape)
+    # fluid.layers.Print(sub24_out, message="sub24_out", summarize=10)
     sub124_out = CCF124(sub1_out, sub24_out, input_shape)
+    # fluid.layers.Print(sub124_out, message="sub124_out", summarize=10)
 
     conv6_cls = conv(
         sub124_out, 1, 1, num_classes, 1, 1, biased=True, name="conv6_cls")
+    # fluid.layers.Print(conv6_cls, message="conv6_cls", summarize=10)
     sub4_out = conv(
         sub4_out, 1, 1, num_classes, 1, 1, biased=True, name="sub4_out")
+    # fluid.layers.Print(sub4_out, message="sub4_out", summarize=10)
     sub24_out = conv(
         sub24_out, 1, 1, num_classes, 1, 1, biased=True, name="sub24_out")
+    # fluid.layers.Print(sub24_out, message="sub24_out", summarize=10)
 
     return sub4_out, sub24_out, conv6_cls

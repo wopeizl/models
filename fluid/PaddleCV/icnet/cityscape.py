@@ -6,16 +6,19 @@ from __future__ import print_function
 import os
 import cv2
 import numpy as np
+import paddle
 import paddle.dataset as dataset
 
 DATA_PATH = "." + os.sep + "data" + os.sep + "cityscape"
 TRAIN_LIST = DATA_PATH + os.sep + "train.list"
 TEST_LIST = DATA_PATH + os.sep + "val.list"
 IGNORE_LABEL = 255
-NUM_CLASSES = 19
-TRAIN_DATA_SHAPE = (3, 720, 720)
-TEST_DATA_SHAPE = (3, 1024, 2048)
-IMG_MEAN = np.array((103.939, 116.779, 123.68), dtype=np.float32)
+NUM_CLASSES = 2
+TRAIN_DATA_SHAPE = (3, 449, 449)
+LABEL_SHAPE = (449, 449)
+TEST_DATA_SHAPE = (3, 449, 449)
+IMG_MEAN = np.array((112.15140582, 109.41102899, 185.42127424), dtype=np.float32)
+
 
 
 def train_data_shape():
@@ -31,7 +34,7 @@ def num_classes():
 
 
 class DataGenerater:
-    def __init__(self, data_list, mode="train", flip=True, scaling=True):
+    def __init__(self, data_list, mode="train", flip=False, scaling=False):
         self.flip = flip
         self.scaling = scaling
         self.image_label = []
@@ -43,6 +46,7 @@ class DataGenerater:
                 image_file = self.data_path + os.sep + image_file
                 label_file = str.replace(label_file, '/', os.sep)
                 label_file = self.data_path + os.sep + label_file
+                # print (image_file, label_file)
                 self.image_label.append((image_file, label_file))
 
     def create_train_reader(self, batch_size):
@@ -90,7 +94,9 @@ class DataGenerater:
 
         def reader():
             for image, label in self.image_label:
+                # print "image: %s" % image
                 image, label = self.load(image, label)
+                image, label = self.resize(image, label, out_size=TRAIN_DATA_SHAPE[1:]) # for test
                 image = dataset.image.to_chw(image)[np.newaxis, :]
                 label = label[np.newaxis, :, :, np.newaxis].astype("float32")
                 label_mask = np.where((label != IGNORE_LABEL).flatten())[
@@ -123,8 +129,13 @@ class DataGenerater:
         image = dataset.image.load_image(
             image, is_color=True).astype("float32")
         image -= IMG_MEAN
-        label = dataset.image.load_image(
-            label, is_color=False).astype("float32")
+        if label == None:
+            label = np.zeros(LABEL_SHAPE).astype("float32")
+        else:
+            label = dataset.image.load_image(
+                label, is_color=False).astype("float32")
+        # print(image, label)
+        # print('------------------------------------------------------------')
         return image, label
 
     def random_flip(self, image, label):
@@ -200,7 +211,7 @@ class DataGenerater:
             "float32"), label0, mask_sub1, label1, mask_sub2, label2, mask_sub4
 
 
-def train(data_path=None, batch_size=32, flip=True, scaling=True):
+def train(data_path=None, batch_size=32, flip=False, scaling=False):
     """
     Cityscape training set reader.
     It returns a reader, in which each result is a batch with batch_size samples.

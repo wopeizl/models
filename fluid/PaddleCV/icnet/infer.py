@@ -15,7 +15,7 @@ from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
 from paddle.fluid.initializer import init_on_cpu
 import numpy as np
 
-IMG_MEAN = np.array((103.939, 116.779, 123.68), dtype=np.float32)
+IMG_MEAN = np.array((112.15140582, 109.41102899, 185.4212), dtype=np.float32)
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 # yapf: disable
@@ -26,8 +26,8 @@ add_arg('out_path',          str,   "./output",         "Output path.")
 add_arg('use_gpu',           bool,  True,       "Whether use GPU to test.")
 # yapf: enable
 
-data_shape = [3, 1024, 2048]
-num_classes = 19
+data_shape = [3, 449, 581]
+num_classes = 2
 
 label_colours = [
     [128, 64, 128],
@@ -103,6 +103,10 @@ def infer(args):
     assert os.path.exists(args.model_path)
     fluid.io.load_params(exe, args.model_path)
     print("loaded model from: %s" % args.model_path)
+    fluid.io.save_inference_model("infer_model", ["image"], [predict], exe,
+                                  main_program=inference_program,
+                                  params_filename="__params__")
+
     sys.stdout.flush()
 
     if not os.path.isdir(args.out_path):
@@ -110,7 +114,10 @@ def infer(args):
 
     for line in open(args.images_list):
         image_file = args.images_path + os.sep + line.strip()
+        image_file = str.replace(image_file, '/', os.sep)
+        image_file = image_file.split(' ')[0]
         filename = os.path.basename(image_file)
+        print(filename, image_file)
         image = paddle.dataset.image.load_image(
             image_file, is_color=True).astype("float32")
         image -= IMG_MEAN
