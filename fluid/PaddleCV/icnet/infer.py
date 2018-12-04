@@ -88,7 +88,7 @@ def resize(image, out_size):
     return image
 
 def infer(args):
-    data_shape = cityscape.test_data_shape()
+    data_shape = (3, 449, 581)
     num_classes = cityscape.num_classes()
     # define network
     images = fluid.layers.data(name='image', shape=data_shape, dtype='float32')
@@ -129,7 +129,7 @@ def infer(args):
         image = paddle.dataset.image.load_image(
             image_file, is_color=True).astype("float32")
         image -= IMG_MEAN
-        image = resize(image, out_size=cityscape.TRAIN_DATA_SHAPE[1:])  # for test
+        # image = resize(image, out_size=cityscape.TRAIN_DATA_SHAPE[1:])  # for test
         img = paddle.dataset.image.to_chw(image)[np.newaxis, :]
         image_t = fluid.core.LoDTensor()
         image_t.set(img, place)
