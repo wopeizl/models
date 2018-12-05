@@ -34,7 +34,7 @@ def num_classes():
 
 
 class DataGenerater:
-    def __init__(self, data_list, mode="train", flip=False, scaling=False):
+    def __init__(self, data_list, mode="train", flip=True, scaling=True):
         self.flip = flip
         self.scaling = scaling
         self.image_label = []
@@ -207,7 +207,7 @@ class DataGenerater:
             "float32"), label0, mask_sub1, label1, mask_sub2, label2, mask_sub4
 
 
-def train(data_path=None, batch_size=32, flip=False, scaling=False):
+def train(data_path=None, batch_size=32, flip=True, scaling=True):
     """
     Cityscape training set reader.
     It returns a reader, in which each result is a batch with batch_size samples.
