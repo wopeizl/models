@@ -70,7 +70,9 @@ run_type_g.add_arg("do_infer", bool, True, "Whether to perform inference.")
 
 args = parser.parse_args()
 
-args.batch_size = 1
+args.batch_size = 2
+padding_size = 150
+
 senta_config = SentaConfig(args.senta_config_path)
 
 if args.use_cuda:
@@ -80,21 +82,23 @@ else:
     place = fluid.CPUPlace()
     dev_count = 2
 
+
+def reader_decorator(reader):
+    def _reader_imple():
+        for item in reader():
+            doc = np.pad(item[0][0:padding_size], (0, padding_size - len(item[0][0:padding_size])), 'constant').astype('int64').reshape(padding_size, 1)
+            label = np.array(item[1]).reshape(1)
+            yield doc, label
+
+    return _reader_imple
+
+
 def train_cnn():
     with fluid.dygraph.guard():
         processor = reader.SentaProcessor(data_dir=args.data_dir,
                                           vocab_path=args.vocab_path,
                                           random_seed=args.random_seed)
         num_labels = len(processor.get_labels())
-
-        # train_reader = fluid.io.PyReader(
-        #     feed_list=[
-        #         np.empty([args.batch_size, 1], dtype='int64'),
-        #         np.empty([args.batch_size, 1], dtype='int64'),
-        #     ],
-        #     capacity=2,
-        #     iterable=True,
-        #     use_double_buffer=True)
 
         num_train_examples = processor.get_num_examples(phase="train")
 
@@ -105,7 +109,15 @@ def train_cnn():
             phase='train',
             epoch=args.epoch,
             shuffle=True)
-        padding_size = 150
+
+        py_reader = fluid.io.PyReader()
+        py_reader.decorate_sample_list_generator(
+                paddle.batch(
+                    reader_decorator(paddle.dataset.mnist.train()),
+                    batch_size=args.batch_size,
+                    drop_last=True),
+                places=fluid.CPUPlace())
+
         cnn_net = nets.CNN("cnn_net", 33256, args.batch_size, padding_size)
         # train_reader.decorate_sample_list_generator(
         #     train_data_generator, places=fluid.CPUPlace())
@@ -113,59 +125,54 @@ def train_cnn():
         sgd_optimizer = fluid.optimizer.Adagrad(learning_rate=args.lr)
         steps = 0
         for eop in range(args.epoch):
-
             time_begin = time.time()
-
-            # for batch_id, data in enumerate(train_reader()):
+            # for batch_id, data in enumerate(py_reader()):
             for batch_id, data in enumerate(train_data_generator()):
                 steps += 1
-
                 total_cost, total_acc, total_num_seqs = [], [], []
-                # print(data[0])
-                # print(data[1][0])
-                # [print(x[0]) for x in data]
-                # [print(x[1]) for x in data]
-                # print(np.array(
-                #         [x[0] for x in data]))
                 doc = to_variable(np.array(
-                        [np.pad(x[0][0:padding_size], (0,padding_size - len(x[0][0:padding_size])), 'constant') for x in data]).astype('int64').reshape(-1, args.batch_size))
-                # print(doc.numpy())
+                        [np.pad(x[0][0:padding_size], (0,padding_size - len(x[0][0:padding_size])), 'constant') for x in data]).astype('int64').reshape(-1, 1))
                 label = to_variable(np.array(
                         [x[1] for x in data]).astype('int64').reshape(args.batch_size, 1))
-                # label = to_variable([y[1] for y in data[0]])
-                print(doc, label)
+
+                # doc = data[0]
+                # label = data[1]
+                # print(doc, label)
                 avg_cost, prediction, acc = cnn_net(doc, label)
                 avg_cost.backward()
                 sgd_optimizer.minimize(avg_cost)
 
-                dy_out = avg_cost.numpy()
+                num_seqs = fluid.layers.create_tensor(dtype='int64')
+                accuracy = fluid.layers.accuracy(input=prediction, label=label, total=num_seqs)
 
+                dy_out = avg_cost.numpy()
                 cnn_net.clear_gradients()
 
                 print("epoch id: %d, batch step: %d, loss: %f" % (eop, batch_id, dy_out))
 
                 # if steps % args.skip_steps == 0:
-                    # np_loss, np_acc, np_num_seqs = outputs
-                    # np_loss = np.array(np_loss)
-                    # np_acc = np.array(np_acc)
-                    # np_num_seqs = np.array(np_num_seqs)
-                    # total_cost.extend(np_loss * np_num_seqs)
-                    # total_acc.extend(np_acc * np_num_seqs)
-                    # total_num_seqs.extend(np_num_seqs)
-                    #
-                    # if args.verbose:
-                    #     verbose = "train pyreader queue size: %d, " % train_pyreader.queue.size()
-                    #     print(verbose)
-                    #
-                    # time_end = time.time()
-                    # used_time = time_end - time_begin
-                    # print("step: %d, ave loss: %f, "
-                    #     "ave acc: %f, speed: %f steps/s" %
-                    #     (steps, np.sum(total_cost) / np.sum(total_num_seqs),
-                    #     np.sum(total_acc) / np.sum(total_num_seqs),
-                    #     args.skip_steps / used_time))
-                    # total_cost, total_acc, total_num_seqs = [], [], []
-                    # time_begin = time.time()
+                #     np_loss, np_acc, np_num_seqs = avg_cost, accuracy, num_seqs
+                #     print(np_loss, np_acc, np_num_seqs)
+                #     np_loss = np.array(np_loss)
+                #     np_acc = np.array(np_acc)
+                #     np_num_seqs = np.array(np_num_seqs)
+                #     total_cost.extend(np_loss * np_num_seqs)
+                #     total_acc.extend(np_acc * np_num_seqs)
+                #     total_num_seqs.extend(np_num_seqs)
+                #
+                #     # if args.verbose:
+                #     #     verbose = "train pyreader queue size: %d, " % train_pyreader.queue.size()
+                #     #     print(verbose)
+                #
+                #     time_end = time.time()
+                #     used_time = time_end - time_begin
+                #     print("step: %d, ave loss: %f, "
+                #         "ave acc: %f, speed: %f steps/s" %
+                #         (steps, np.sum(total_cost) / np.sum(total_num_seqs),
+                #         np.sum(total_acc) / np.sum(total_num_seqs),
+                #         args.skip_steps / used_time))
+                #     total_cost, total_acc, total_num_seqs = [], [], []
+                #     time_begin = time.time()
 
 if __name__ == '__main__':
     train_cnn()
