@@ -224,6 +224,7 @@ def train_cnn():
                         np.sum(total_eval_acc) / np.sum(total_eval_num_seqs),
                         eval_steps / used_time))
 
+                    time_begin = time.time()
 
 def eval_cnn():
     with fluid.dygraph.guard():
