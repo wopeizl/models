@@ -130,49 +130,58 @@ def train_cnn():
             for batch_id, data in enumerate(train_data_generator()):
                 steps += 1
                 total_cost, total_acc, total_num_seqs = [], [], []
-                doc = to_variable(np.array(
-                        [np.pad(x[0][0:padding_size], (0,padding_size - len(x[0][0:padding_size])), 'constant') for x in data]).astype('int64').reshape(-1, 1))
+                np_doc = np.array(
+                        [np.pad(x[0][0:padding_size], (0,padding_size - len(x[0][0:padding_size])), 'constant') for x in data]).astype('int64').reshape(1, -1)
                 label = to_variable(np.array(
                         [x[1] for x in data]).astype('int64').reshape(args.batch_size, 1))
 
+                # mask = np_doc > 0
+                # assert (np.array_equal(np_doc, np_doc * mask))
+                # print(mask)
+
+                # print(len(mask))
+                # mask = np.repeat(mask, 128, axis=0).reshape(-1, 128)
+                # for i in range(7):
+                #     mask = np.concatenate((mask, mask))
+                # mask = np.transpose(mask)
+                # print(mask.shape)
+                # print(mask)
+                # # os._exit(1)
+                # # print(len(mask))
+                # mask = to_variable(np.array(mask, dtype='float32'))
+
+                doc = to_variable(np_doc.reshape(-1, 1))
+                mask = None
                 # doc = data[0]
                 # label = data[1]
                 # print(doc, label)
-                avg_cost, prediction, acc = cnn_net(doc, label)
+                avg_cost, prediction, acc = cnn_net(doc, label, mask)
                 avg_cost.backward()
                 sgd_optimizer.minimize(avg_cost)
 
-                num_seqs = fluid.layers.create_tensor(dtype='int64')
-                accuracy = fluid.layers.accuracy(input=prediction, label=label, total=num_seqs)
+                # num_seqs = fluid.layers.create_tensor(dtype='int64')
+                # accuracy = fluid.layers.accuracy(input=prediction, label=label, total=num_seqs)
 
                 dy_out = avg_cost.numpy()
                 cnn_net.clear_gradients()
 
-                print("epoch id: %d, batch step: %d, loss: %f" % (eop, batch_id, dy_out))
+                total_cost.append(avg_cost.numpy())
+                total_acc.append(acc.numpy())
+                total_num_seqs.append(1)
 
-                # if steps % args.skip_steps == 0:
-                #     np_loss, np_acc, np_num_seqs = avg_cost, accuracy, num_seqs
-                #     print(np_loss, np_acc, np_num_seqs)
-                #     np_loss = np.array(np_loss)
-                #     np_acc = np.array(np_acc)
-                #     np_num_seqs = np.array(np_num_seqs)
-                #     total_cost.extend(np_loss * np_num_seqs)
-                #     total_acc.extend(np_acc * np_num_seqs)
-                #     total_num_seqs.extend(np_num_seqs)
-                #
-                #     # if args.verbose:
-                #     #     verbose = "train pyreader queue size: %d, " % train_pyreader.queue.size()
-                #     #     print(verbose)
-                #
-                #     time_end = time.time()
-                #     used_time = time_end - time_begin
-                #     print("step: %d, ave loss: %f, "
-                #         "ave acc: %f, speed: %f steps/s" %
-                #         (steps, np.sum(total_cost) / np.sum(total_num_seqs),
-                #         np.sum(total_acc) / np.sum(total_num_seqs),
-                #         args.skip_steps / used_time))
-                #     total_cost, total_acc, total_num_seqs = [], [], []
-                #     time_begin = time.time()
+                # print("epoch id: %d, batch step: %d, loss: %f" % (eop, batch_id, dy_out))
+
+                if steps % args.skip_steps == 0:
+
+                    time_end = time.time()
+                    used_time = time_end - time_begin
+                    print("step: %d, ave loss: %f, "
+                        "ave acc: %f, speed: %f steps/s" %
+                        (steps, np.sum(total_cost) / np.sum(total_num_seqs),
+                        np.sum(total_acc) / np.sum(total_num_seqs),
+                        args.skip_steps / used_time))
+                    total_cost, total_acc, total_num_seqs = [], [], []
+                    time_begin = time.time()
 
 if __name__ == '__main__':
     train_cnn()
