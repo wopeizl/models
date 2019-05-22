@@ -11,10 +11,12 @@ import json
 import numpy as np
 import paddle.fluid as fluid
 
+
 class SentaConfig(object):
     """
     Senta Config
     """
+
     def __init__(self, config_path):
         self._config_dict = self._parse(config_path)
 
@@ -24,7 +26,7 @@ class SentaConfig(object):
                 config_dict = json.load(json_file)
         except Exception:
             raise IOError("Error in parsing bert model config file '%s'" %
-                config_path)
+                          config_path)
 
         else:
             return config_dict

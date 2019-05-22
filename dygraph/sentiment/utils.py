@@ -31,6 +31,7 @@ class ArgumentGroup(object):
     """
     Argument Class
     """
+
     def __init__(self, parser, title, des):
         self._group = parser.add_argument_group(title=title, description=des)
 
@@ -79,7 +80,7 @@ def init_checkpoint(exe, init_checkpoint_path, main_program):
         predicate=existed_persitables)
     print("Load model from {}".format(init_checkpoint_path))
 
-    
+
 def data_reader(file_path, word_dict, num_examples, phrase, epoch):
     """
     Convert word sequence into slot
@@ -95,15 +96,17 @@ def data_reader(file_path, word_dict, num_examples, phrase, epoch):
                 sys.stderr.write("[NOTICE] Error Format Line!")
                 continue
             label = int(cols[1])
-            wids = [word_dict[x] if x in word_dict else unk_id
-                    for x in cols[0].split(" ")]
+            wids = [
+                word_dict[x] if x in word_dict else unk_id
+                for x in cols[0].split(" ")
+            ]
             all_data.append((wids, label))
 
     if phrase == "train":
         random.shuffle(all_data)
 
     num_examples[phrase] = len(all_data)
-        
+
     def reader():
         """
         Reader Function
@@ -111,7 +114,9 @@ def data_reader(file_path, word_dict, num_examples, phrase, epoch):
         for epoch_index in range(epoch):
             for doc, label in all_data:
                 yield doc, label
+
     return reader
+
 
 def load_vocab(file_path):
     """
