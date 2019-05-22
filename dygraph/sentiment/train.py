@@ -70,7 +70,7 @@ run_type_g.add_arg("do_infer", bool, True, "Whether to perform inference.")
 
 args = parser.parse_args()
 
-args.batch_size = 2
+args.batch_size = 20
 padding_size = 150
 
 senta_config = SentaConfig(args.senta_config_path)
@@ -124,12 +124,13 @@ def train_cnn():
 
         sgd_optimizer = fluid.optimizer.Adagrad(learning_rate=args.lr)
         steps = 0
+        total_cost, total_acc, total_num_seqs = [], [], []
+
         for eop in range(args.epoch):
             time_begin = time.time()
             # for batch_id, data in enumerate(py_reader()):
             for batch_id, data in enumerate(train_data_generator()):
                 steps += 1
-                total_cost, total_acc, total_num_seqs = [], [], []
                 np_doc = np.array(
                         [np.pad(x[0][0:padding_size], (0,padding_size - len(x[0][0:padding_size])), 'constant') for x in data]).astype('int64').reshape(1, -1)
                 label = to_variable(np.array(
@@ -168,7 +169,8 @@ def train_cnn():
                 total_cost.append(avg_cost.numpy())
                 total_acc.append(acc.numpy())
                 total_num_seqs.append(1)
-
+                # print(total_cost, total_acc, total_num_seqs)
+                # print(len(total_cost), len(total_acc), len(total_num_seqs))
                 # print("epoch id: %d, batch step: %d, loss: %f" % (eop, batch_id, dy_out))
 
                 if steps % args.skip_steps == 0:

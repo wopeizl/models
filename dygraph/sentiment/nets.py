@@ -61,8 +61,8 @@ class SimpleConvPool(fluid.dygraph.Layer):
                  num_channels,
                  num_filters,
                  filter_size,
-                 pool_size,
-                 pool_stride,
+                 pool_size=-1,
+                 pool_stride=1,
                  pool_padding=0,
                  pool_type='max',
                  global_pooling=False,
@@ -73,20 +73,16 @@ class SimpleConvPool(fluid.dygraph.Layer):
                  act=None,
                  use_cudnn=False,
                  param_attr=None,
-                 bias_attr=None):
+                 bias_attr=None,
+                 batch_size=None):
         super(SimpleConvPool, self).__init__(name_scope)
-
+        self.batch_size = batch_size
         self._conv2d = Conv2D(
             self.full_name(),
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
-            stride=conv_stride,
-            padding=conv_padding,
-            dilation=conv_dilation,
-            groups=conv_groups,
-            param_attr=None,
-            bias_attr=None,
+            num_channels=128,
+            num_filters=128,
+            filter_size=[1,3],
+            padding=[0,1],
             use_cudnn=use_cudnn)
 
         self._pool2d = Pool2D(
@@ -100,7 +96,13 @@ class SimpleConvPool(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         x = self._conv2d(inputs)
-        x = self._pool2d(x)
+        #x = self._pool2d(x)
+
+        x = fluid.layers.reduce_max( x, dim = -1)
+
+        
+        #x = fluid.layers.squeeze( x, axes=[2])
+        x = fluid.layers.reshape( x, shape=[self.batch_size, -1])
         return x
 
 
@@ -126,7 +128,7 @@ class CNN(fluid.dygraph.Layer):
                                            low=-init_scale, high=init_scale)))
 
         self._simple_conv_pool_1 = SimpleConvPool(
-            self.full_name(), 1, self.hid_dim, self.win_size, 2, 2, act="tanh")
+            self.full_name(), self.emb_dim, self.hid_dim, self.win_size, 2, 2, act="tanh", batch_size=batch_size)
 
         # pool_1_shape = self.win_size * 4 * 4
         # scale1 = (2.0 / (pool_1_shape**2 * self.hid_dim))**0.5
@@ -162,6 +164,9 @@ class CNN(fluid.dygraph.Layer):
 
         emb = fluid.layers.reshape(
             emb, shape=[-1, 1, self.seq_len, self.hid_dim])
+
+        emb = fluid.layers.transpose( 
+                emb, [ 0, 3, 1, 2])
         # print(emb)
         conv_3 = self._simple_conv_pool_1(emb)
 
