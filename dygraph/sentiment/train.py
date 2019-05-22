@@ -46,7 +46,7 @@ model_g.add_arg("checkpoints", str, "checkpoints", "Path to save checkpoints")
 
 train_g = ArgumentGroup(parser, "training", "training options.")
 train_g.add_arg("epoch", int, 10, "Number of epoches for training.")
-train_g.add_arg("save_steps", int, 10000, "The steps interval to save checkpoints.")
+train_g.add_arg("save_steps", int, 5000, "The steps interval to save checkpoints.")
 train_g.add_arg("validation_steps", int, 1000, "The steps interval to evaluate model performance.")
 train_g.add_arg("lr", float, 0.002, "The Learning rate value for training.")
 
@@ -110,6 +110,12 @@ def train_cnn():
             epoch=args.epoch,
             shuffle=True)
 
+        eval_data_generator = processor.data_generator(
+            batch_size=args.batch_size,
+            phase='dev',
+            epoch=args.epoch,
+            shuffle=False)
+
         py_reader = fluid.io.PyReader()
         py_reader.decorate_sample_list_generator(
                 paddle.batch(
@@ -156,6 +162,7 @@ def train_cnn():
                 # doc = data[0]
                 # label = data[1]
                 # print(doc, label)
+                cnn_net.train()
                 avg_cost, prediction, acc = cnn_net(doc, label, mask)
                 avg_cost.backward()
                 sgd_optimizer.minimize(avg_cost)
@@ -184,6 +191,46 @@ def train_cnn():
                         args.skip_steps / used_time))
                     total_cost, total_acc, total_num_seqs = [], [], []
                     time_begin = time.time()
+
+                # if steps % args.save_steps == 0:
+                #     fluid.dygraph.save_persistables(cnn_net.state_dict(),
+                #                                     "save_dir_" + str(steps))
+
+                if steps % args.validation_steps == 0:
+                    total_eval_cost, total_eval_acc, total_eval_num_seqs = [], [], []
+                    cnn_net.eval()
+                    eval_steps = 0
+                    for eval_batch_id, eval_data in enumerate(eval_data_generator()):
+                        eval_np_doc = np.array(
+                            [np.pad(x[0][0:padding_size], (0, padding_size - len(x[0][0:padding_size])), 'constant') for
+                             x in eval_data]).astype('int64').reshape(1, -1)
+                        eval_label = to_variable(np.array(
+                            [x[1] for x in eval_data]).astype('int64').reshape(args.batch_size, 1))
+                        eval_doc = to_variable(eval_np_doc.reshape(-1, 1))
+                        eval_mask = None
+
+                        eval_avg_cost, eval_prediction, eval_acc = cnn_net(eval_doc, eval_label, eval_mask)
+                        total_eval_cost.append(eval_avg_cost.numpy())
+                        total_eval_acc.append(eval_acc.numpy())
+                        total_eval_num_seqs.append(1)
+                        eval_steps += 1
+
+                    time_end = time.time()
+                    used_time = time_end - time_begin
+                    print("Final validation result:")
+                    print(" step: %d, ave loss: %f, "
+                        "ave acc: %f, speed: %f steps/s" %
+                        (steps, np.sum(total_eval_cost) / np.sum(total_eval_num_seqs),
+                        np.sum(total_eval_acc) / np.sum(total_eval_num_seqs),
+                        eval_steps / used_time))
+
+
+def eval_cnn():
+    with fluid.dygraph.guard():
+        cnn_net = nets.CNN("cnn_net", 33256, args.batch_size, padding_size)
+        fluid.dygraph.save_persistables(cnn_net.state_dict(),
+                                    "save_dir")
+
 
 if __name__ == '__main__':
     train_cnn()
