@@ -50,7 +50,7 @@ train_g = ArgumentGroup(parser, "training", "training options.")
 train_g.add_arg("epoch", int, 10, "Number of epoches for training.")
 train_g.add_arg("save_steps", int, 5000,
                 "The steps interval to save checkpoints.")
-train_g.add_arg("validation_steps", int, 1000,
+train_g.add_arg("validation_steps", int, 20,
                 "The steps interval to evaluate model performance.")
 train_g.add_arg("lr", float, 0.002, "The Learning rate value for training.")
 
@@ -133,7 +133,7 @@ def main():
                         args.batch_size, 1))
 
                 cnn_net.train()
-                avg_cost, prediction, acc = cnn_net(doc, label, None)
+                avg_cost, prediction, acc = cnn_net(doc, label)
                 avg_cost.backward()
                 sgd_optimizer.minimize(avg_cost)
                 cnn_net.clear_gradients()
@@ -167,9 +167,8 @@ def main():
                             np.array([x[1] for x in eval_data]).astype('int64')
                             .reshape(args.batch_size, 1))
                         eval_doc = to_variable(eval_np_doc.reshape(-1, 1))
-                        eval_mask = None
                         eval_avg_cost, eval_prediction, eval_acc = cnn_net(
-                            eval_doc, eval_label, eval_mask)
+                            eval_doc, eval_label)
                         total_eval_cost.append(eval_avg_cost.numpy())
                         total_eval_acc.append(eval_acc.numpy())
                         total_eval_num_seqs.append(1)

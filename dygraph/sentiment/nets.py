@@ -59,8 +59,9 @@ class SimpleConvPool(fluid.dygraph.Layer):
             global_pooling=global_pooling,
             use_cudnn=use_cudnn)
 
-    def forward(self, inputs):
+    def forward(self, inputs, mask):
         x = self._conv2d(inputs)
+        x = x * mask
         #x = self._pool2d(x)
         x = fluid.layers.reduce_max(x, dim=-1)
         x = fluid.layers.reshape(x, shape=[self.batch_size, -1])
@@ -103,12 +104,16 @@ class CNN(fluid.dygraph.Layer):
                                  size=self.class_dim,
                                  act="softmax")
 
-    def forward(self, inputs, label, mask):
+    def forward(self, inputs, label):
+        mask = to_variable((inputs > 0).numpy().reshape((self.batch_size, 1, 1,
+                                                         -1)).astype('float32'))
+        mask = fluid.layers.expand(mask, [1, self.hid_dim, 1, 1])
+        # mask = fluid.layers.reshape(mask, shape=[self.batch_size, self.hid_dim, 1, self.seq_len])
         emb = self.embedding(inputs)
         emb = fluid.layers.reshape(
             emb, shape=[-1, 1, self.seq_len, self.hid_dim])
         emb = fluid.layers.transpose(emb, [0, 3, 1, 2])
-        conv_3 = self._simple_conv_pool_1(emb)
+        conv_3 = self._simple_conv_pool_1(emb, mask)
 
         fc_1 = self._fc1(conv_3)
         prediction = self._fc_prediction(fc_1)
