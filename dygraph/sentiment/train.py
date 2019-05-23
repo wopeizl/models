@@ -21,21 +21,15 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 import nets
 import reader
-from config import SentaConfig
 from utils import ArgumentGroup
 
 
 DATA_PATH = "./senta_data/"
-CKPT_PATH = "./save_models"
-MODEL_PATH = "./save_models/step_1800/"
+CKPT_PATH = "./save_models/"
 VOCAB_PATH = DATA_PATH + "word_dict.txt"
-SENTA_CONFIG_PATH = "./senta_config.json"
-skip_steps = 10
 
 parser = argparse.ArgumentParser(__doc__)
 model_g = ArgumentGroup(parser, "model", "model configuration and paths.")
-model_g.add_arg("senta_config_path", str, SENTA_CONFIG_PATH,
-                "Path to the json file for senta model config.")
 model_g.add_arg("init_checkpoint", str, CKPT_PATH,
                 "Init checkpoint to resume training from.")
 model_g.add_arg("checkpoints", str, "checkpoints", "Path to save checkpoints")
@@ -72,8 +66,6 @@ args = parser.parse_args()
 
 args.batch_size = 20
 padding_size = 150
-
-senta_config = SentaConfig(args.senta_config_path)
 
 if args.use_cuda:
     place = fluid.CUDAPlace(int(os.getenv('FLAGS_selected_gpus', '0')))
@@ -180,7 +172,7 @@ def main():
 
                 if steps % args.save_steps == 0:
                     fluid.dygraph.save_persistables(cnn_net.state_dict(),
-                                                    "save_dir_" + str(steps))
+                                                    CKPT_PATH + "save_dir_" + str(steps))
 
 
 if __name__ == '__main__':

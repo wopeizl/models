@@ -29,9 +29,6 @@ class ArgumentGroup(object):
         self._group = parser.add_argument_group(title=title, description=des)
 
     def add_arg(self, name, type, default, help, **kwargs):
-        """
-        Add argument
-        """
         type = str2bool if type == bool else type
         self._group.add_argument(
             "--" + name,
