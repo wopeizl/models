@@ -105,8 +105,9 @@ class CNN(fluid.dygraph.Layer):
                                  act="softmax")
 
     def forward(self, inputs, label):
-        mask = to_variable((inputs > 0).numpy().reshape((self.batch_size, 1, 1,
-                                                         -1)).astype('float32'))
+        np_mask = (inputs.numpy() > 0).reshape((self.batch_size, 1, 1,
+                                                -1)).astype('float32')
+        mask = to_variable(np_mask)
         mask = fluid.layers.expand(mask, [1, self.hid_dim, 1, 1])
         # mask = fluid.layers.reshape(mask, shape=[self.batch_size, self.hid_dim, 1, self.seq_len])
         emb = self.embedding(inputs)
