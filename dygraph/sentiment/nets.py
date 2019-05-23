@@ -11,13 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC, Embedding
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
 
 
 class SimpleConvPool(fluid.dygraph.Layer):
@@ -31,22 +27,15 @@ class SimpleConvPool(fluid.dygraph.Layer):
                  pool_padding=0,
                  pool_type='max',
                  global_pooling=False,
-                 conv_stride=1,
-                 conv_padding=0,
-                 conv_dilation=1,
-                 conv_groups=1,
-                 act=None,
                  use_cudnn=False,
-                 param_attr=None,
-                 bias_attr=None,
                  batch_size=None):
         super(SimpleConvPool, self).__init__(name_scope)
         self.batch_size = batch_size
         self._conv2d = Conv2D(
             self.full_name(),
-            num_channels=128,
-            num_filters=128,
-            filter_size=[1, 3],
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=filter_size,
             padding=[0, 1],
             use_cudnn=use_cudnn)
 
@@ -62,7 +51,6 @@ class SimpleConvPool(fluid.dygraph.Layer):
     def forward(self, inputs, mask):
         x = self._conv2d(inputs)
         x = x * mask
-        #x = self._pool2d(x)
         x = fluid.layers.reduce_max(x, dim=-1)
         x = fluid.layers.reshape(x, shape=[self.batch_size, -1])
         return x
@@ -76,7 +64,7 @@ class CNN(fluid.dygraph.Layer):
         self.hid_dim = 128
         self.hid_dim2 = 96
         self.class_dim = 2
-        self.win_size = 3
+        self.win_size = [1, 3]
         self.batch_size = batch_size
         self.seq_len = seq_len
         init_scale = 0.1
@@ -97,7 +85,6 @@ class CNN(fluid.dygraph.Layer):
             self.win_size,
             2,
             2,
-            act="tanh",
             batch_size=batch_size)
         self._fc1 = FC(self.full_name(), size=self.hid_dim2, act="softmax")
         self._fc_prediction = FC(self.full_name(),
@@ -109,7 +96,6 @@ class CNN(fluid.dygraph.Layer):
                                                 -1)).astype('float32')
         mask = to_variable(np_mask)
         mask = fluid.layers.expand(mask, [1, self.hid_dim, 1, 1])
-        # mask = fluid.layers.reshape(mask, shape=[self.batch_size, self.hid_dim, 1, self.seq_len])
         emb = self.embedding(inputs)
         emb = fluid.layers.reshape(
             emb, shape=[-1, 1, self.seq_len, self.hid_dim])
