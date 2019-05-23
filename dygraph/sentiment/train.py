@@ -17,19 +17,13 @@ import os
 import time
 import argparse
 import numpy as np
-import multiprocessing
-import sys
-from PIL import Image
-import paddle
 import paddle.fluid as fluid
-from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 import nets
 import reader
 from config import SentaConfig
-from utils import ArgumentGroup, print_arguments
-from utils import init_checkpoint
+from utils import ArgumentGroup
+
 
 DATA_PATH = "./senta_data/"
 CKPT_PATH = "./save_models"
