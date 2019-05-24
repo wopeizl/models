@@ -23,7 +23,6 @@ import nets
 import reader
 from utils import ArgumentGroup
 
-
 DATA_PATH = "./senta_data/"
 CKPT_PATH = "./save_models/"
 VOCAB_PATH = DATA_PATH + "word_dict.txt"
@@ -50,7 +49,8 @@ data_g = ArgumentGroup(parser, "data",
                        "Data paths, vocab paths and data processing options")
 data_g.add_arg("data_dir", str, DATA_PATH, "Path to training data.")
 data_g.add_arg("vocab_path", str, VOCAB_PATH, "Vocabulary path.")
-data_g.add_arg("batch_size", int, 256,
+data_g.add_arg("vocab_size", int, 33256, "Vocabulary path.")
+data_g.add_arg("batch_size", int, 20,
                "Total examples' number in batch for training.")
 data_g.add_arg("random_seed", int, 0, "Random seed.")
 
@@ -64,7 +64,6 @@ run_type_g.add_arg("do_infer", bool, True, "Whether to perform inference.")
 
 args = parser.parse_args()
 
-args.batch_size = 20
 padding_size = 150
 
 if args.use_cuda:
@@ -75,7 +74,7 @@ else:
     dev_count = 1
 
 
-def main():
+def train():
     with fluid.dygraph.guard():
         processor = reader.SentaProcessor(
             data_dir=args.data_dir,
@@ -99,7 +98,8 @@ def main():
             epoch=args.epoch,
             shuffle=False)
 
-        cnn_net = nets.CNN("cnn_net", 33256, args.batch_size, padding_size)
+        cnn_net = nets.CNN("cnn_net", args.vocab_size, args.batch_size,
+                           padding_size)
 
         sgd_optimizer = fluid.optimizer.Adagrad(learning_rate=args.lr)
         steps = 0
@@ -171,9 +171,51 @@ def main():
                     time_begin = time.time()
 
                 if steps % args.save_steps == 0:
-                    fluid.dygraph.save_persistables(cnn_net.state_dict(),
-                                                    CKPT_PATH + "save_dir_" + str(steps))
+                    fluid.dygraph.save_persistables(
+                        cnn_net.state_dict(),
+                        CKPT_PATH + "save_dir_" + str(steps))
+
+
+def infer():
+    with fluid.dygraph.guard():
+        processor = reader.SentaProcessor(
+            data_dir=args.data_dir,
+            vocab_path=args.vocab_path,
+            random_seed=args.random_seed)
+
+        infer_data_generator = processor.data_generator(
+            batch_size=args.batch_size,
+            phase='test',
+            epoch=args.epoch,
+            shuffle=False)
+
+        cnn_net_infer = nets.CNN("cnn_net", args.vocab_size, args.batch_size,
+                                 padding_size)
+
+        sgd_optimizer = fluid.optimizer.Adagrad(learning_rate=args.lr)
+
+        cnn_net_infer.load_dict(
+            fluid.dygraph.load_persistables(args.checkpoints))
+
+        for batch_id, data in enumerate(infer_data_generator()):
+            doc = to_variable(
+                np.array([
+                    np.pad(x[0][0:padding_size], (0, padding_size - len(x[0][
+                        0:padding_size])), 'constant') for x in data
+                ]).astype('int64').reshape(-1, 1))
+
+            cnn_net_infer.eval()
+            prediction = cnn_net_infer(doc)
+            print(prediction)
+
+
+def main():
+    if args.do_train:
+        train()
+    elif args.do_infer:
+        infer()
 
 
 if __name__ == '__main__':
+    print(args)
     main()

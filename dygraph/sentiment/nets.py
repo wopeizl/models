@@ -105,8 +105,11 @@ class CNN(fluid.dygraph.Layer):
         fc_1 = self._fc1(conv_3)
         prediction = self._fc_prediction(fc_1)
 
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        if label:
+            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            avg_cost = fluid.layers.mean(x=cost)
+            acc = fluid.layers.accuracy(input=prediction, label=label)
 
-        return avg_cost, prediction, acc
+            return avg_cost, prediction, acc
+        else:
+            return prediction
