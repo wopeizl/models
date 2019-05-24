@@ -179,6 +179,7 @@ def train():
 
 def infer():
     with fluid.dygraph.guard():
+        loaded = False
         processor = reader.SentaProcessor(
             data_dir=args.data_dir,
             vocab_path=args.vocab_path,
@@ -195,9 +196,6 @@ def infer():
 
         sgd_optimizer = fluid.optimizer.Adagrad(learning_rate=args.lr)
 
-        cnn_net_infer.load_dict(
-            fluid.dygraph.load_persistables(args.checkpoints))
-
         print('infer result:')
         for batch_id, data in enumerate(infer_data_generator()):
             doc = to_variable(
@@ -208,6 +206,12 @@ def infer():
             label = data[0][1]
 
             cnn_net_infer.eval()
+            if not loaded:
+                cnn_net_infer(doc)
+                restore = fluid.dygraph.load_persistables(args.checkpoints)
+                cnn_net_infer.load_dict(restore)
+                loaded = True
+
             prediction = cnn_net_infer(doc)
             print(label, prediction.numpy()[0])
 
