@@ -171,9 +171,10 @@ def train():
                     time_begin = time.time()
 
                 if steps % args.save_steps == 0:
-                    fluid.dygraph.save_persistables(
-                        cnn_net.state_dict(),
-                        CKPT_PATH + "save_dir_" + str(steps))
+                    save_path = CKPT_PATH + "save_dir_" + str(steps)
+                    print('save model to: ' + save_path)
+                    fluid.dygraph.save_persistables(cnn_net.state_dict(),
+                                                    save_path)
 
 
 def infer():
@@ -182,14 +183,14 @@ def infer():
             data_dir=args.data_dir,
             vocab_path=args.vocab_path,
             random_seed=args.random_seed)
-
+        batch_size = 1
         infer_data_generator = processor.data_generator(
-            batch_size=args.batch_size,
-            phase='test',
+            batch_size=batch_size,
+            phase='infer',
             epoch=args.epoch,
             shuffle=False)
 
-        cnn_net_infer = nets.CNN("cnn_net", args.vocab_size, args.batch_size,
+        cnn_net_infer = nets.CNN("cnn_net", args.vocab_size, batch_size,
                                  padding_size)
 
         sgd_optimizer = fluid.optimizer.Adagrad(learning_rate=args.lr)
@@ -197,16 +198,18 @@ def infer():
         cnn_net_infer.load_dict(
             fluid.dygraph.load_persistables(args.checkpoints))
 
+        print('infer result:')
         for batch_id, data in enumerate(infer_data_generator()):
             doc = to_variable(
                 np.array([
                     np.pad(x[0][0:padding_size], (0, padding_size - len(x[0][
                         0:padding_size])), 'constant') for x in data
                 ]).astype('int64').reshape(-1, 1))
+            label = data[0][1]
 
             cnn_net_infer.eval()
             prediction = cnn_net_infer(doc)
-            print(prediction)
+            print(label, prediction.numpy()[0])
 
 
 def main():
