@@ -8,7 +8,6 @@
 | CNN | 90.6% | 89.9% | CNN |92.4% | 91.8% |
 
 
-
 ## 快速开始
 
 本项目依赖于 Paddlepaddle 1.3.2 及以上版本，请参考 [安装指南](http://www.paddlepaddle.org/#quick-start) 进行安装
@@ -30,15 +29,6 @@ cd models/PaddleNLP/sentiment_classification
 wget https://baidu-nlp.bj.bcebos.com/sentiment_classification-dataset-1.0.0.tar.gz
 tar -zxvf sentiment_classification-dataset-1.0.0.tar.gz
 ```
-
-#### 模型评估
-
-基于上面的预训练模型和数据，可以运行下面的命令进行测试，查看预训练模型在开发集（dev.tsv）上的评测效果
-```shell
-# BOW、CNN、LSTM、BI-LSTM、GRU模型
-sh run.sh eval
-# ERNIE、ERNIE+BI-LSTM模型
-sh run_ernie.sh eval
 
 #### 模型训练
 
@@ -73,12 +63,6 @@ python infer.py
 特 喜欢 这种 好看的 狗狗	              1
 这 真是 惊艳 世界 的 中国 黑科技	      1
 环境 特别 差 ，脏兮兮 的，再也 不去 了     0
-```
-注：本项目额外提供了分词预处理脚本（在本项目的preprocess目录下），可供用户使用，具体使用方法如下：
-```shell
-python tokenizer.py --test_data_dir ./test.txt.utf8 --batch_size 1 > test.txt.utf8.seg
-
-#其中test.txt.utf8为待分词的文件，一条文本数据一行，utf8编码，分词结果存放在test.txt.utf8.seg文件中。
 ```
 
 #### 代码结构说明
