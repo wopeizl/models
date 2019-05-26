@@ -35,12 +35,12 @@ train_g = ArgumentGroup(parser, "training", "training options.")
 train_g.add_arg("epoch", int, 10, "Number of epoches for training.")
 train_g.add_arg("save_steps", int, 5000,
                 "The steps interval to save checkpoints.")
-train_g.add_arg("validation_steps", int, 1000,
+train_g.add_arg("validation_steps", int, 50,
                 "The steps interval to evaluate model performance.")
 train_g.add_arg("lr", float, 0.002, "The Learning rate value for training.")
 
 log_g = ArgumentGroup(parser, "logging", "logging related")
-log_g.add_arg("skip_steps", int, 100, "The steps interval to print loss.")
+log_g.add_arg("skip_steps", int, 10, "The steps interval to print loss.")
 log_g.add_arg("verbose", bool, False, "Whether to output verbose log")
 
 data_g = ArgumentGroup(parser, "data",
