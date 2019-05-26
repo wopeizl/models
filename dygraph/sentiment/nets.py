@@ -14,7 +14,7 @@
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC, Embedding
 from paddle.fluid.dygraph.base import to_variable
-
+import numpy as np
 
 class SimpleConvPool(fluid.dygraph.Layer):
     def __init__(self,
@@ -51,7 +51,7 @@ class SimpleConvPool(fluid.dygraph.Layer):
 
     def forward(self, inputs, mask):
         x = self._conv2d(inputs)
-        x = x * mask
+        x = x - mask * to_variable(np.ones([1], dtype='float32') * 100000.0)
         x = fluid.layers.reduce_max(x, dim=-1)
         x = fluid.layers.reshape(x, shape=[self.batch_size, -1])
         return x
@@ -89,13 +89,12 @@ class CNN(fluid.dygraph.Layer):
                                  act="softmax")
 
     def forward(self, inputs, label=None):
-        np_mask = (inputs.numpy() != self.dict_dim).astype('float32')
-        # print(np_mask.shape)
+        np_mask = (inputs.numpy() == self.dict_dim).astype('float32')
         mask_conv = to_variable(np_mask.reshape((self.batch_size, 1, 1, -1)))
         mask_conv = fluid.layers.expand(mask_conv, [1, self.hid_dim, 1, 1])
         emb = self.embedding(inputs)
-        mask_emb = fluid.layers.expand(to_variable(np_mask), [1, self.hid_dim])
-        # print(emb)
+        o_np_mask = (inputs.numpy() != self.dict_dim).astype('float32')
+        mask_emb = fluid.layers.expand(to_variable(o_np_mask), [1, self.hid_dim])
         emb = emb * mask_emb
         emb = fluid.layers.reshape(
             emb, shape=[-1, 1, self.seq_len, self.hid_dim])
