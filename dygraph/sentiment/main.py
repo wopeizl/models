@@ -40,7 +40,7 @@ train_g.add_arg("validation_steps", int, 1000,
 train_g.add_arg("lr", float, 0.002, "The Learning rate value for training.")
 
 log_g = ArgumentGroup(parser, "logging", "logging related")
-log_g.add_arg("skip_steps", int, 10, "The steps interval to print loss.")
+log_g.add_arg("skip_steps", int, 100, "The steps interval to print loss.")
 log_g.add_arg("verbose", bool, False, "Whether to output verbose log")
 
 data_g = ArgumentGroup(parser, "data",
@@ -117,7 +117,7 @@ def train():
         for eop in range(args.epoch):
             time_begin = time.time()
             for batch_id, data in enumerate(train_data_generator()):
-                enable_profile = steps > 50
+                enable_profile = steps > 50000
 
                 with profile_context(enable_profile):
 
@@ -127,7 +127,7 @@ def train():
                             np.pad(x[0][0:padding_size], (0, padding_size - len(
                                 x[0][0:padding_size])),
                                    'constant',
-                                   constant_values=(128)) for x in data
+                                   constant_values=(args.vocab_size)) for x in data
                         ]).astype('int64').reshape(-1, 1))
                     label = to_variable(
                         np.array([x[1] for x in data]).astype('int64').reshape(

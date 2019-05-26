@@ -70,7 +70,7 @@ class CNN(fluid.dygraph.Layer):
         init_scale = 0.1
         self.embedding = Embedding(
             self.full_name(),
-            size=[self.dict_dim, self.emb_dim],
+            size=[self.dict_dim + 1, self.emb_dim],
             dtype='float32',
             is_sparse=False,
             param_attr=fluid.ParamAttr(
@@ -92,7 +92,7 @@ class CNN(fluid.dygraph.Layer):
                                  act="softmax")
 
     def forward(self, inputs, label=None):
-        np_mask = (inputs.numpy() != 128).astype('float32')
+        np_mask = (inputs.numpy() != self.dict_dim).astype('float32')
         # print(np_mask.shape)
         mask_conv = to_variable(np_mask.reshape((self.batch_size, 1, 1, -1)))
         mask_conv = fluid.layers.expand(mask_conv, [1, self.hid_dim, 1, 1])
