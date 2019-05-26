@@ -136,11 +136,14 @@ def train():
                     cnn_net.train()
                     avg_cost, prediction, acc = cnn_net(doc, label)
                     avg_cost.backward()
+
+                    np_mask = (doc.numpy() != args.vocab_size).astype('int32')
+                    word_num = np.sum(np_mask )
                     sgd_optimizer.minimize(avg_cost)
                     cnn_net.clear_gradients()
-                    total_cost.append(avg_cost.numpy())
-                    total_acc.append(acc.numpy())
-                    total_num_seqs.append(1)
+                    total_cost.append(avg_cost.numpy() * word_num)
+                    total_acc.append(acc.numpy() * word_num)
+                    total_num_seqs.append(word_num)
 
                     if steps % args.skip_steps == 0:
                         time_end = time.time()
@@ -164,7 +167,8 @@ def train():
                                 np.pad(x[0][0:padding_size], (
                                     0,
                                     padding_size - len(x[0][0:padding_size])),
-                                       'constant') for x in eval_data
+                                       'constant',
+                                   constant_values=(args.vocab_size)) for x in eval_data
                             ]).astype('int64').reshape(1, -1)
                             eval_label = to_variable(
                                 np.array([x[1] for x in eval_data]).astype(
@@ -172,9 +176,13 @@ def train():
                             eval_doc = to_variable(eval_np_doc.reshape(-1, 1))
                             eval_avg_cost, eval_prediction, eval_acc = cnn_net(
                                 eval_doc, eval_label)
-                            total_eval_cost.append(eval_avg_cost.numpy())
-                            total_eval_acc.append(eval_acc.numpy())
-                            total_eval_num_seqs.append(1)
+
+                            eval_np_mask = (eval_np_doc!= args.vocab_size).astype('int32')
+                            eval_word_num = np.sum(eval_np_mask)
+                            total_eval_cost.append(eval_avg_cost.numpy() * eval_word_num)
+                            total_eval_acc.append(eval_acc.numpy() * eval_word_num)
+                            total_eval_num_seqs.append(eval_word_num)
+
                             eval_steps += 1
 
                         time_end = time.time()
@@ -215,8 +223,6 @@ def infer():
 
         cnn_net_infer = nets.CNN("cnn_net", args.vocab_size, batch_size,
                                  padding_size)
-
-        sgd_optimizer = fluid.optimizer.Adagrad(learning_rate=args.lr)
 
         print('infer result:')
         for batch_id, data in enumerate(infer_data_generator()):

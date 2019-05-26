@@ -37,7 +37,8 @@ class SimpleConvPool(fluid.dygraph.Layer):
             num_filters=num_filters,
             filter_size=filter_size,
             padding=[0, 1],
-            use_cudnn=use_cudnn)
+            use_cudnn=use_cudnn,
+            act='tanh')
 
         self._pool2d = Pool2D(
             self.full_name(),
@@ -72,11 +73,7 @@ class CNN(fluid.dygraph.Layer):
             self.full_name(),
             size=[self.dict_dim + 1, self.emb_dim],
             dtype='float32',
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
-                name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
-                    low=-init_scale, high=init_scale)))
+            is_sparse=False)
 
         self._simple_conv_pool_1 = SimpleConvPool(
             self.full_name(),
