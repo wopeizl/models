@@ -246,7 +246,7 @@ def infer():
                     args.batch_size, 1))
 
             if not loaded:
-                cnn_net_infer.train()
+                cnn_net_infer.eval()
                 cnn_net_infer(doc, label)
                 restore = fluid.dygraph.load_persistables(args.checkpoints)
                 cnn_net_infer.load_dict(restore)
