@@ -57,6 +57,7 @@ run_type_g.add_arg("use_cuda", bool, False, "If set, use GPU for training.")
 run_type_g.add_arg("do_train", bool, True, "Whether to perform training.")
 run_type_g.add_arg("do_val", bool, True, "Whether to perform evaluation.")
 run_type_g.add_arg("do_infer", bool, False, "Whether to perform inference.")
+run_type_g.add_arg("profile_steps", int, 5000, "Whether to perform inference.")
 
 args = parser.parse_args()
 
@@ -76,8 +77,7 @@ import contextlib
 @contextlib.contextmanager
 def profile_context(profile=True):
     if profile:
-        with profiler.profiler('All', 'total',
-                               '/Users/peizhilin/Desktop/tmp/profile_file'):
+        with profiler.profiler('All', 'total', '/tmp/profile_file'):
             yield
     else:
         yield
@@ -117,7 +117,7 @@ def train():
         for eop in range(args.epoch):
             time_begin = time.time()
             for batch_id, data in enumerate(train_data_generator()):
-                enable_profile = steps > 50000
+                enable_profile = steps > args.profile_steps
 
                 with profile_context(enable_profile):
 
@@ -209,6 +209,7 @@ def train():
                                                         save_path)
 
                     if enable_profile:
+                        print('save profile result into /tmp/profile_file')
                         return
 
 
