@@ -29,7 +29,7 @@ model_g.add_arg("checkpoints", str, "checkpoints", "Path to save checkpoints")
 
 train_g = ArgumentGroup(parser, "training", "training options.")
 train_g.add_arg("epoch", int, 10, "Number of epoches for training.")
-train_g.add_arg("save_steps", int, 5000,
+train_g.add_arg("save_steps", int, 10,
                 "The steps interval to save checkpoints.")
 train_g.add_arg("validation_steps", int, 200,
                 "The steps interval to evaluate model performance.")
@@ -219,7 +219,7 @@ def infer():
             data_dir=args.data_dir,
             vocab_path=args.vocab_path,
             random_seed=args.random_seed)
-        batch_size = 1
+        batch_size = args.batch_size * 8
         infer_data_generator = processor.data_generator(
             batch_size=batch_size,
             phase='infer',
@@ -230,24 +230,41 @@ def infer():
                                  args.padding_size)
 
         print('infer result:')
+        total_acc, total_num_seqs = [], []
+        steps = 0
+        time_begin = time.time()
         for batch_id, data in enumerate(infer_data_generator()):
+            steps += 1
             doc = to_variable(
                 np.array([
                     np.pad(x[0][0:args.padding_size], (
                         0, args.padding_size - len(x[0][0:args.padding_size])),
                            'constant') for x in data
                 ]).astype('int64').reshape(-1, 1))
-            label = data[0][1]
+            label = to_variable(data[0][1])
 
-            cnn_net_infer.eval()
             if not loaded:
-                cnn_net_infer(doc)
+                cnn_net_infer.train()
+                cnn_net_infer(doc, label)
                 restore = fluid.dygraph.load_persistables(args.checkpoints)
                 cnn_net_infer.load_dict(restore)
                 loaded = True
 
-            prediction = cnn_net_infer(doc)
-            print(label, prediction.numpy()[0])
+            cnn_net_infer.eval()
+            acc = cnn_net_infer(doc, label)
+
+            mask = (doc != args.vocab_size).astype('int32')
+            word_num = np.sum(mask)
+            total_acc.append(acc.numpy() * word_num)
+            total_num_seqs.append(word_num)
+
+            # print(label, prediction.numpy()[0])
+        time_end = time.time()
+        used_time = time_end - time_begin
+
+        print("Final infer result: ave acc: %f, speed: %f steps/s" %
+              (steps, np.sum(total_acc) / np.sum(total_num_seqs),
+               steps / used_time))
 
 
 def main():
