@@ -56,7 +56,7 @@ run_type_g.add_arg("use_cuda", bool, False, "If set, use GPU for training.")
 run_type_g.add_arg("do_train", bool, True, "Whether to perform training.")
 run_type_g.add_arg("do_val", bool, True, "Whether to perform evaluation.")
 run_type_g.add_arg("do_infer", bool, False, "Whether to perform inference.")
-run_type_g.add_arg("profile_steps", int, 5000,
+run_type_g.add_arg("profile_steps", int, 15000,
                    "The steps interval to record the performance.")
 
 args = parser.parse_args()
@@ -82,7 +82,7 @@ def profile_context(profile=True):
 
 
 def train():
-    with fluid.dygraph.guard():
+    with fluid.dygraph.guard(place):
         processor = reader.SentaProcessor(
             data_dir=args.data_dir,
             vocab_path=args.vocab_path,
@@ -213,7 +213,7 @@ def train():
 
 
 def infer():
-    with fluid.dygraph.guard():
+    with fluid.dygraph.guard(place):
         loaded = False
         processor = reader.SentaProcessor(
             data_dir=args.data_dir,
