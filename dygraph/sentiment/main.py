@@ -219,7 +219,7 @@ def infer():
             data_dir=args.data_dir,
             vocab_path=args.vocab_path,
             random_seed=args.random_seed)
-        batch_size = args.batch_size * 8
+        batch_size = args.batch_size
         infer_data_generator = processor.data_generator(
             batch_size=batch_size,
             phase='infer',
@@ -235,13 +235,15 @@ def infer():
         time_begin = time.time()
         for batch_id, data in enumerate(infer_data_generator()):
             steps += 1
-            doc = to_variable(
-                np.array([
-                    np.pad(x[0][0:args.padding_size], (
-                        0, args.padding_size - len(x[0][0:args.padding_size])),
-                           'constant') for x in data
-                ]).astype('int64').reshape(-1, 1))
-            label = to_variable(data[0][1])
+            np_doc = np.array([
+                np.pad(x[0][0:args.padding_size],
+                       (0, args.padding_size - len(x[0][0:args.padding_size])),
+                       'constant') for x in data
+            ]).astype('int64').reshape(-1, 1)
+            doc = to_variable(np_doc)
+            label = to_variable(
+                np.array([x[1] for x in data]).astype('int64').reshape(
+                    args.batch_size, 1))
 
             if not loaded:
                 cnn_net_infer.train()
@@ -251,9 +253,9 @@ def infer():
                 loaded = True
 
             cnn_net_infer.eval()
-            acc = cnn_net_infer(doc, label)
+            _, _, acc = cnn_net_infer(doc, label)
 
-            mask = (doc != args.vocab_size).astype('int32')
+            mask = (np_doc != args.vocab_size).astype('int32')
             word_num = np.sum(mask)
             total_acc.append(acc.numpy() * word_num)
             total_num_seqs.append(word_num)
