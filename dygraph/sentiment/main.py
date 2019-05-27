@@ -219,17 +219,17 @@ def infer():
             data_dir=args.data_dir,
             vocab_path=args.vocab_path,
             random_seed=args.random_seed)
-        batch_size = args.batch_size
+
         infer_data_generator = processor.data_generator(
-            batch_size=batch_size,
+            batch_size=args.batch_size,
             phase='infer',
             epoch=args.epoch,
             shuffle=False)
 
-        cnn_net_infer = nets.CNN("cnn_net", args.vocab_size, batch_size,
+        cnn_net_infer = nets.CNN("cnn_net", args.vocab_size, args.batch_size,
                                  args.padding_size)
 
-        print('infer result:')
+        print('Do inferring ...... ')
         total_acc, total_num_seqs = [], []
         steps = 0
         time_begin = time.time()
@@ -260,13 +260,11 @@ def infer():
             total_acc.append(acc.numpy() * word_num)
             total_num_seqs.append(word_num)
 
-            # print(label, prediction.numpy()[0])
         time_end = time.time()
         used_time = time_end - time_begin
 
         print("Final infer result: ave acc: %f, speed: %f steps/s" %
-              (steps, np.sum(total_acc) / np.sum(total_num_seqs),
-               steps / used_time))
+              (np.sum(total_acc) / np.sum(total_num_seqs), steps / used_time))
 
 
 def main():
