@@ -51,8 +51,8 @@ class SimpleConvPool(fluid.dygraph.Layer):
 
     def forward(self, inputs, mask):
         x = self._conv2d(inputs)
-        print(x.numpy().shape)
-        print(mask.numpy().shape)
+        # print(x.numpy().shape)
+        # print(mask.numpy().shape)
         # x = x - mask * to_variable(np.ones([1], dtype='float32') * 100000.0)
         x = fluid.layers.reduce_max(x, dim=-1)
         x = fluid.layers.reshape(x, shape=[self.batch_size, -1])
@@ -79,8 +79,8 @@ class CNN(fluid.dygraph.Layer):
 
         self._simple_conv_pool_1 = SimpleConvPool(
             self.full_name(),
-            self.emb_dim,
-            # 1,
+            # self.emb_dim,
+            1,
             self.hid_dim,
             self.win_size,
             2,
