@@ -35,7 +35,7 @@ train_g = ArgumentGroup(parser, "training", "training options.")
 train_g.add_arg("epoch", int, 10, "Number of epoches for training.")
 train_g.add_arg("save_steps", int, 5000,
                 "The steps interval to save checkpoints.")
-train_g.add_arg("validation_steps", int, 50,
+train_g.add_arg("validation_steps", int, 200,
                 "The steps interval to evaluate model performance.")
 train_g.add_arg("lr", float, 0.002, "The Learning rate value for training.")
 

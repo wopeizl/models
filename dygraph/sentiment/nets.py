@@ -36,22 +36,24 @@ class SimpleConvPool(fluid.dygraph.Layer):
             num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
-            padding=[0, 1],
+            padding=[1, 1],
             use_cudnn=use_cudnn,
             act='tanh')
 
-        self._pool2d = Pool2D(
-            self.full_name(),
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn)
+        # self._pool2d = Pool2D(
+        #     self.full_name(),
+        #     pool_size=pool_size,
+        #     pool_type=pool_type,
+        #     pool_stride=pool_stride,
+        #     pool_padding=pool_padding,
+        #     global_pooling=global_pooling,
+        #     use_cudnn=use_cudnn)
 
     def forward(self, inputs, mask):
         x = self._conv2d(inputs)
-        x = x - mask * to_variable(np.ones([1], dtype='float32') * 100000.0)
+        print(x.numpy().shape)
+        print(mask.numpy().shape)
+        # x = x - mask * to_variable(np.ones([1], dtype='float32') * 100000.0)
         x = fluid.layers.reduce_max(x, dim=-1)
         x = fluid.layers.reshape(x, shape=[self.batch_size, -1])
         return x
@@ -65,7 +67,7 @@ class CNN(fluid.dygraph.Layer):
         self.hid_dim = 128
         self.hid_dim2 = 96
         self.class_dim = 2
-        self.win_size = [1, 3]
+        self.win_size = [3, self.hid_dim]
         self.batch_size = batch_size
         self.seq_len = seq_len
         init_scale = 0.1
@@ -78,6 +80,7 @@ class CNN(fluid.dygraph.Layer):
         self._simple_conv_pool_1 = SimpleConvPool(
             self.full_name(),
             self.emb_dim,
+            # 1,
             self.hid_dim,
             self.win_size,
             2,
@@ -90,15 +93,16 @@ class CNN(fluid.dygraph.Layer):
 
     def forward(self, inputs, label=None):
         np_mask = (inputs.numpy() == self.dict_dim).astype('float32')
-        mask_conv = to_variable(np_mask.reshape((self.batch_size, 1, 1, -1)))
-        mask_conv = fluid.layers.expand(mask_conv, [1, self.hid_dim, 1, 1])
+        mask_conv = to_variable(np_mask.reshape((self.batch_size, 1, -1, 1)))
+        mask_conv = fluid.layers.expand(mask_conv, [1, 1, 1, self.hid_dim])
         emb = self.embedding(inputs)
         o_np_mask = (inputs.numpy() != self.dict_dim).astype('float32')
         mask_emb = fluid.layers.expand(to_variable(o_np_mask), [1, self.hid_dim])
         emb = emb * mask_emb
         emb = fluid.layers.reshape(
             emb, shape=[-1, 1, self.seq_len, self.hid_dim])
-        emb = fluid.layers.transpose(emb, [0, 3, 1, 2])
+        # emb = fluid.layers.transpose(emb, [0, 3, 1, 2])
+        # print(emb.numpy().shape)
         conv_3 = self._simple_conv_pool_1(emb, mask_conv)
 
         fc_1 = self._fc1(conv_3)
