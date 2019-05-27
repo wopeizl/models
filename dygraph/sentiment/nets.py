@@ -14,7 +14,7 @@
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC, Embedding
 from paddle.fluid.dygraph.base import to_variable
-import numpy as np
+
 
 class SimpleConvPool(fluid.dygraph.Layer):
     def __init__(self,
@@ -22,11 +22,6 @@ class SimpleConvPool(fluid.dygraph.Layer):
                  num_channels,
                  num_filters,
                  filter_size,
-                 pool_size=-1,
-                 pool_stride=1,
-                 pool_padding=0,
-                 pool_type='max',
-                 global_pooling=False,
                  use_cudnn=False,
                  batch_size=None):
         super(SimpleConvPool, self).__init__(name_scope)
@@ -40,20 +35,8 @@ class SimpleConvPool(fluid.dygraph.Layer):
             use_cudnn=use_cudnn,
             act='tanh')
 
-        # self._pool2d = Pool2D(
-        #     self.full_name(),
-        #     pool_size=pool_size,
-        #     pool_type=pool_type,
-        #     pool_stride=pool_stride,
-        #     pool_padding=pool_padding,
-        #     global_pooling=global_pooling,
-        #     use_cudnn=use_cudnn)
-
-    def forward(self, inputs, mask):
+    def forward(self, inputs):
         x = self._conv2d(inputs)
-        # print(x.numpy().shape)
-        # print(mask.numpy().shape)
-        # x = x - mask * to_variable(np.ones([1], dtype='float32') * 100000.0)
         x = fluid.layers.reduce_max(x, dim=-1)
         x = fluid.layers.reshape(x, shape=[self.batch_size, -1])
         return x
@@ -70,7 +53,6 @@ class CNN(fluid.dygraph.Layer):
         self.win_size = [3, self.hid_dim]
         self.batch_size = batch_size
         self.seq_len = seq_len
-        init_scale = 0.1
         self.embedding = Embedding(
             self.full_name(),
             size=[self.dict_dim + 1, self.emb_dim],
@@ -79,31 +61,24 @@ class CNN(fluid.dygraph.Layer):
 
         self._simple_conv_pool_1 = SimpleConvPool(
             self.full_name(),
-            # self.emb_dim,
             1,
             self.hid_dim,
             self.win_size,
-            2,
-            2,
-            batch_size=batch_size)
+            batch_size=self.batch_size)
         self._fc1 = FC(self.full_name(), size=self.hid_dim2, act="softmax")
         self._fc_prediction = FC(self.full_name(),
                                  size=self.class_dim,
                                  act="softmax")
 
     def forward(self, inputs, label=None):
-        np_mask = (inputs.numpy() == self.dict_dim).astype('float32')
-        mask_conv = to_variable(np_mask.reshape((self.batch_size, 1, -1, 1)))
-        mask_conv = fluid.layers.expand(mask_conv, [1, 1, 1, self.hid_dim])
         emb = self.embedding(inputs)
         o_np_mask = (inputs.numpy() != self.dict_dim).astype('float32')
-        mask_emb = fluid.layers.expand(to_variable(o_np_mask), [1, self.hid_dim])
+        mask_emb = fluid.layers.expand(
+            to_variable(o_np_mask), [1, self.hid_dim])
         emb = emb * mask_emb
         emb = fluid.layers.reshape(
             emb, shape=[-1, 1, self.seq_len, self.hid_dim])
-        # emb = fluid.layers.transpose(emb, [0, 3, 1, 2])
-        # print(emb.numpy().shape)
-        conv_3 = self._simple_conv_pool_1(emb, mask_conv)
+        conv_3 = self._simple_conv_pool_1(emb)
 
         fc_1 = self._fc1(conv_3)
         prediction = self._fc_prediction(fc_1)

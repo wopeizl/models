@@ -127,8 +127,10 @@ def train():
                             np.pad(x[0][0:padding_size], (0, padding_size - len(
                                 x[0][0:padding_size])),
                                    'constant',
-                                   constant_values=(args.vocab_size)) for x in data
+                                   constant_values=(args.vocab_size))
+                            for x in data
                         ]).astype('int64').reshape(-1, 1))
+
                     label = to_variable(
                         np.array([x[1] for x in data]).astype('int64').reshape(
                             args.batch_size, 1))
@@ -138,7 +140,7 @@ def train():
                     avg_cost.backward()
 
                     np_mask = (doc.numpy() != args.vocab_size).astype('int32')
-                    word_num = np.sum(np_mask )
+                    word_num = np.sum(np_mask)
                     sgd_optimizer.minimize(avg_cost)
                     cnn_net.clear_gradients()
                     total_cost.append(avg_cost.numpy() * word_num)
@@ -168,7 +170,8 @@ def train():
                                     0,
                                     padding_size - len(x[0][0:padding_size])),
                                        'constant',
-                                   constant_values=(args.vocab_size)) for x in eval_data
+                                       constant_values=(args.vocab_size))
+                                for x in eval_data
                             ]).astype('int64').reshape(1, -1)
                             eval_label = to_variable(
                                 np.array([x[1] for x in eval_data]).astype(
@@ -177,24 +180,26 @@ def train():
                             eval_avg_cost, eval_prediction, eval_acc = cnn_net(
                                 eval_doc, eval_label)
 
-                            eval_np_mask = (eval_np_doc!= args.vocab_size).astype('int32')
+                            eval_np_mask = (
+                                eval_np_doc != args.vocab_size).astype('int32')
                             eval_word_num = np.sum(eval_np_mask)
-                            total_eval_cost.append(eval_avg_cost.numpy() * eval_word_num)
-                            total_eval_acc.append(eval_acc.numpy() * eval_word_num)
+                            total_eval_cost.append(eval_avg_cost.numpy() *
+                                                   eval_word_num)
+                            total_eval_acc.append(eval_acc.numpy() *
+                                                  eval_word_num)
                             total_eval_num_seqs.append(eval_word_num)
 
                             eval_steps += 1
 
                         time_end = time.time()
                         used_time = time_end - time_begin
-                        print("Final validation result:")
-                        print(" step: %d, ave loss: %f, "
-                              "ave acc: %f, speed: %f steps/s" %
-                              (steps, np.sum(total_eval_cost) /
-                               np.sum(total_eval_num_seqs),
-                               np.sum(total_eval_acc) /
-                               np.sum(total_eval_num_seqs),
-                               eval_steps / used_time))
+                        print(
+                            "Final validation result: step: %d, ave loss: %f, "
+                            "ave acc: %f, speed: %f steps/s" %
+                            (steps, np.sum(total_eval_cost) /
+                             np.sum(total_eval_num_seqs), np.sum(total_eval_acc)
+                             / np.sum(total_eval_num_seqs),
+                             eval_steps / used_time))
                         time_begin = time.time()
 
                     if steps % args.save_steps == 0:
